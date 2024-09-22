@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 /**
  * {@link FFmpeg} provides an ability to start &amp; stop ffmpeg process and keep track of
@@ -51,6 +52,8 @@ public class FFmpeg {
     private ProgressListener progressListener;
     private OutputListener outputListener;
     private String progress;
+    private Consumer<Map<String, String>> environmentModifier;
+
     //-filter_threads nb_threads (global)
     //-debug_ts (global)
 
@@ -409,6 +412,19 @@ public class FFmpeg {
     }
 
     /**
+     * Callback for modifying the environment variables of the process prior to executing.
+     *
+     * @param environmentModifier functional interface that is given the process builder's
+     *                            environment to be modified
+     * @return this
+     */
+    public FFmpeg setEnvironmentModifier(
+            final Consumer<Map<String, String>> environmentModifier) {
+        this.environmentModifier = environmentModifier;
+        return this;
+    }
+
+    /**
      * Starts synchronous ffmpeg execution.
      * <p>
      * Current thread is blocked until ffmpeg is finished.
@@ -506,6 +522,7 @@ public class FFmpeg {
                         .setStdErrReader(createStdErrReader(outputListener))
                         .setStdOutReader(createStdOutReader())
                         .setHelpers(helpers)
+                        .setEnvironmentModifier(environmentModifier)
                         .setArguments(buildArguments());
         if (executorTimeoutMillis != null) {
             processHandler.setExecutorTimeoutMillis(executorTimeoutMillis);

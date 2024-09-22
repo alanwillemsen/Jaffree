@@ -29,7 +29,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * {@link ProcessHandler} executes program.
@@ -49,6 +51,7 @@ public class ProcessHandler<T> {
     private List<ProcessHelper> helpers = null;
     private Stopper stopper = null;
     private List<String> arguments = Collections.emptyList();
+    private Consumer<Map<String, String>> environmentModifier = null;
     private int executorTimeoutMillis = DEFAULT_EXECUTOR_TIMEOUT_MILLIS;
 
     private static final int DEFAULT_EXECUTOR_TIMEOUT_MILLIS = 10_000;
@@ -122,6 +125,19 @@ public class ProcessHandler<T> {
     }
 
     /**
+     * Callback for modifying the environment variables of the process prior to executing.
+     *
+     * @param environmentModifier functional interface that is given the process builder's
+     *                            environment to be modified
+     * @return this
+     */
+    public synchronized ProcessHandler<T> setEnvironmentModifier(
+            final Consumer<Map<String, String>> environmentModifier) {
+        this.environmentModifier = environmentModifier;
+        return this;
+    }
+
+    /**
      * Overrides the default Executor timeout.
      * <p>
      * A value of 0 is interpreted as "wait indefinitely".
@@ -153,7 +169,16 @@ public class ProcessHandler<T> {
             Process process = null;
             try {
                 LOGGER.info("Starting process: {}", executable);
-                process = new ProcessBuilder(command)
+                ProcessBuilder processBuilder = new ProcessBuilder(command);
+                if (environmentModifier != null) {
+                    Map<String, String> env = processBuilder.environment();
+                    if (env == null) {
+                        LOGGER.warn("System does not support environment variables.");
+                    } else {
+                        environmentModifier.accept(env);
+                    }
+                }
+                process = processBuilder
                         .start();
                 if (stopper != null) {
                     stopper.setProcess(process);
