@@ -21,6 +21,7 @@ import com.github.kokorin.jaffree.process.Stopper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -46,6 +47,22 @@ public class FFmpegStopper implements Stopper {
     @Override
     public void forceStop() {
         sendToStdIn("qq");
+        if (process != null) {
+            process.destroy();
+            // Process must be destroyed before closing streamscloseQuietly(process.getInputStream());
+            closeQuietly(process.getOutputStream());
+            closeQuietly(process.getErrorStream());
+        }
+    }
+
+    private static void closeQuietly(final Closeable toClose) {
+        try {
+            if (toClose != null) {
+                toClose.close();
+            }
+        } catch (Exception e) {
+            LOGGER.info("Ignoring exception: " + e.getMessage());
+        }
     }
 
     /**
