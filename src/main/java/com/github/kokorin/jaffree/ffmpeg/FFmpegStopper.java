@@ -49,7 +49,8 @@ public class FFmpegStopper implements Stopper {
         sendToStdIn("qq");
         if (process != null) {
             process.destroy();
-            // Process must be destroyed before closing streamscloseQuietly(process.getInputStream());
+            // Process must be destroyed before closing streams
+            closeQuietly(process.getInputStream());
             closeQuietly(process.getOutputStream());
             closeQuietly(process.getErrorStream());
         }
